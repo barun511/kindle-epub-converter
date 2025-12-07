@@ -2,6 +2,12 @@
 name = "kindle_epub_converter"
 version = "0.1.0"
 edition = "2024"
+license = "MPL-2.0"
+keywords = ["epub", "kindle", "sanitize", "ebook"]
+readme = "README.md"
+repository = "https://github.com/barun511/kindle-epub-converter/"
+description = "Library to sanitize epubs for kindles"
+authors = ["Barun Parruck <barun.parruck@gmail.com>"]
 
 [dependencies]
 regex = "1.12.2"
