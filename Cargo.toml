@@ -1,0 +1,9 @@
+[package]
+name = "kindle_epub_converter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+regex = "1.12.2"
+scraper = "0.24.0"
+zip = "6.0.0"
