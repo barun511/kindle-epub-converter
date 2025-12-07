@@ -8,6 +8,7 @@ readme = "README.md"
 repository = "https://github.com/barun511/kindle-epub-converter/"
 description = "Library to sanitize epubs for kindles"
 authors = ["Barun Parruck <barun.parruck@gmail.com>"]
+exclude = [".gitignore"]
 
 [dependencies]
 regex = "1.12.2"
