@@ -1,6 +1,6 @@
 [package]
 name = "kindle_epub_converter"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MPL-2.0"
 keywords = ["epub", "kindle", "sanitize", "ebook"]
@@ -11,6 +11,7 @@ authors = ["Barun Parruck <barun.parruck@gmail.com>"]
 exclude = [".gitignore"]
 
 [dependencies]
+anyhow = "1.0.102"
 regex = "1.12.2"
 scraper = "0.24.0"
 zip = "6.0.0"

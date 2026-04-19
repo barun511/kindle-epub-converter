@@ -1,3 +1,4 @@
+use anyhow::{Error, Ok, anyhow};
 use regex::Regex;
 use scraper::{Html, Selector};
 use std::io::prelude::*;
@@ -29,17 +30,22 @@ pub struct EpubConverter {
     pub fixed_problems: Vec<String>,
 }
 
-pub fn convert_epub(input_path: &Path, output_path: &Path, verbose: bool) {
+pub fn convert_epub(
+    input_path: &Path,
+    output_path: &Path,
+    verbose: bool,
+) -> Result<(), anyhow::Error> {
     let mut epub_converter = EpubConverter::new();
-    epub_converter.read_epub(input_path);
-    epub_converter.fix_encoding();
-    epub_converter.fix_body_id_link();
-    epub_converter.fix_book_language();
-    epub_converter.write_epub(output_path);
+    epub_converter.read_epub(input_path)?;
+    epub_converter.fix_encoding()?;
+    epub_converter.fix_body_id_link()?;
+    epub_converter.fix_book_language()?;
+    epub_converter.write_epub(output_path)?;
 
     if verbose {
         epub_converter.output_fixed_problems();
     }
+    Ok(())
 }
 
 impl EpubConverter {
@@ -58,10 +64,10 @@ impl EpubConverter {
         }
     }
 
-    fn read_epub(&mut self, path: &Path) -> () {
-        let file = fs::File::open(path).unwrap();
+    fn read_epub(&mut self, path: &Path) -> Result<(), anyhow::Error> {
+        let file = fs::File::open(path)?;
 
-        let mut initial_files = zip::ZipArchive::new(file).unwrap();
+        let mut initial_files = zip::ZipArchive::new(file)?;
 
         let non_binary_suffixes: Vec<&str> = vec![
             "mimetype", "html", "xhtml", "htm", "xml", "svg", "css", "opf", "ncx",
@@ -71,7 +77,7 @@ impl EpubConverter {
         let mut binary_files: Vec<BinaryFileData> = vec![];
 
         for i in 0..initial_files.len() {
-            let mut file = initial_files.by_index(i).unwrap();
+            let mut file = initial_files.by_index(i)?;
             if non_binary_suffixes
                 .iter()
                 .any(|&x| file.name().ends_with(x))
@@ -79,12 +85,14 @@ impl EpubConverter {
                 let mut buffer: String = "".to_string();
                 let _ = file.read_to_string(&mut buffer);
                 files.push(FileData {
-                    file_name: file.enclosed_name().unwrap(),
+                    file_name: file
+                        .enclosed_name()
+                        .ok_or(anyhow!("Unable to convert path"))?,
                     file_data: buffer,
                 })
             } else if !file
                 .enclosed_name()
-                .unwrap()
+                .ok_or(anyhow!("Unable to determine name"))?
                 .into_os_string()
                 .into_string()
                 .unwrap()
@@ -93,24 +101,31 @@ impl EpubConverter {
                 let mut buffer: Vec<u8> = vec![];
                 let _ = file.read_to_end(&mut buffer);
                 binary_files.push(BinaryFileData {
-                    file_name: file.enclosed_name().unwrap(),
+                    file_name: file
+                        .enclosed_name()
+                        .ok_or(anyhow!("Unable to convert path"))?,
                     file_data: buffer,
                 });
             }
         }
         self.files = Some(files);
         self.binary_files = Some(binary_files);
+        Ok(())
     }
 
-    fn fix_encoding(&mut self) {
+    fn fix_encoding(&mut self) -> Result<(), anyhow::Error> {
         let encoding = r#"<?xml version="1.0" encoding="utf-8"?>"#;
         let re = Regex::new(
             r#"(?m)<\?xml\s+version=["'][\d.]+["']\s+encoding=["'][a-zA-Z\d\-.]+["'].*?\?>"#,
-        )
-        .unwrap();
+        )?;
 
         // iterate over all files
-        for file in self.files.as_ref().unwrap().iter() {
+        for file in self
+            .files
+            .as_ref()
+            .ok_or(anyhow!("failed to convert reference"))?
+            .iter()
+        {
             let maybe_ext = file.file_name.extension().and_then(|s| s.to_str());
             if let Some(ext) = maybe_ext
                 && (ext == "html" || ext == "xhtml")
@@ -130,12 +145,18 @@ impl EpubConverter {
                 });
             }
         }
+        Ok(())
     }
 
-    fn fix_body_id_link(&mut self) {
+    fn fix_body_id_link(&mut self) -> Result<(), anyhow::Error> {
         let mut body_id_list: Vec<(String, String)> = vec![];
 
-        for file in self.files.as_ref().unwrap().iter() {
+        for file in self
+            .files
+            .as_ref()
+            .ok_or(anyhow!("failed to convert reference"))?
+            .iter()
+        {
             let maybe_ext = file.file_name.extension().and_then(|s| s.to_str());
             if let Some(ext) = maybe_ext
                 && (ext == "html" || ext == "xhtml")
@@ -168,9 +189,10 @@ impl EpubConverter {
                 }
             }
         }
+        Ok(())
     }
 
-    fn fix_book_language(&mut self) {
+    fn fix_book_language(&mut self) -> Result<(), anyhow::Error> {
         // TODO(bparruck): Add support for language configuration further up the API layer.
         let preferred_language = "en";
         let supported_languages = vec!["en"];
@@ -239,9 +261,10 @@ impl EpubConverter {
             self.fixed_problems
                 .push("Added missing language tag".to_string());
         }
+        Ok(())
     }
 
-    fn write_epub(&mut self, path: &Path) {
+    fn write_epub(&mut self, path: &Path) -> Result<(), anyhow::Error> {
         let files = self.files.as_ref().unwrap();
         let binary_files = self.binary_files.as_ref().unwrap();
         let output_file = std::fs::File::create(path).unwrap();
@@ -267,6 +290,7 @@ impl EpubConverter {
         }
 
         zip_writer.finish().unwrap();
+        Ok(())
     }
 }
 
