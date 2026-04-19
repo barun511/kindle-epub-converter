@@ -235,7 +235,7 @@ impl EpubConverter {
         let metadata_tag = opf_dom
             .select(&metadata_selector)
             .next()
-            .expect("Metadata tag missing in opf file");
+            .ok_or(anyhow!("Metadata tag missing in opf file"))?;
 
         if let Some(lt) = language_tag {
             let mut language = lt.inner_html();
